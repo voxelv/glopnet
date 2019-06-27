@@ -25,6 +25,8 @@ BLACK_ON_BLUE = 4
 class Glopnet:
     def __init__(self):
         self.stdscr = None
+        self.scr_size = (0, 0)
+        self.full_redraw = True
 
         self.should_close = False
 
@@ -34,7 +36,6 @@ class Glopnet:
 
         self.lookup = {
             'resize': False,
-            'info': "TEST",
         }
 
     def setup(self):
@@ -95,14 +96,15 @@ class Glopnet:
         # Clear and refresh the screen for a blank canvas
         self.stdscr.clear()
         self.stdscr.refresh()
+        self.scr_size = self.stdscr.getmaxyx()
 
     def resize_screen(self):
-        self.lookup['info'] = "{}{}".format(str(self.stdscr.getmaxyx()))
-        h, w = self.stdscr.getmaxyx()
-        curses.resize_term(h, w)
+        if curses.is_term_resized(*self.scr_size):
+            self.scr_size = self.stdscr.getmaxyx()
+            self.full_redraw = True
+            curses.resize_term(*self.scr_size)
 
     def run(self):
-
         try:
             # Initialize curses
             self.stdscr = curses.initscr()
@@ -137,28 +139,27 @@ class Glopnet:
                 pass
             elif ch == curses.KEY_RESIZE:
                 self.lookup['resize'] = True
-                self.lookup['info'] = "RESIZING!"
 
     def update(self):
         pass
 
-    def render(self):
-        self.stdscr.clear()
-        
-        max_h, max_w = self.stdscr.getmaxyx()
+    def draw(self):
+        if self.full_redraw:
+            self.full_redraw = False
+            self.stdscr.clear()
+            self.scr_size = self.stdscr.getmaxyx()
+            h, w = self.scr_size
 
-        # Draw frame
-        self.stdscr.attron(curses.color_pair(BLACK_ON_WHITE))
-        # first line
-        self.stdscr.hline(0, 1, " ", max_w - 2)
-        # edges
-        self.stdscr.vline(1, 0, " ", max_h - 3)
-        self.stdscr.vline(1, max_w - 1, " ", max_h - 3)
-        # last line
-        self.stdscr.hline(max_h - 2, 1, " ", max_w - 2)
-        self.stdscr.attroff(curses.color_pair(BLACK_ON_WHITE))
-
-        safe_addstr(self.stdscr, 1, 1, str(self.lookup['info']))
+            # Draw frame
+            self.stdscr.attron(curses.color_pair(BLACK_ON_WHITE))
+            # first line
+            self.stdscr.hline(0, 1, " ", w - 2)
+            # edges
+            self.stdscr.vline(1, 0, " ", h - 2)
+            self.stdscr.vline(1, w - 1, " ", h - 2)
+            # last line
+            self.stdscr.hline(h - 1, 1, " ", w - 2)
+            self.stdscr.attroff(curses.color_pair(BLACK_ON_WHITE))
 
     @staticmethod
     def update_thread(**kwargs):
@@ -188,14 +189,13 @@ class Glopnet:
                     input_to_process.append(inp)
 
             curses_lock.acquire()  # =============================================================== CURSES LOCK ACQUIRE
-
             if glopnet.lookup['resize']:
                 glopnet.lookup['resize'] = False
                 glopnet.resize_screen()
+            curses_lock.release()  # =============================================================== CURSES LOCK RELEASE
+
             glopnet.process_input(input_to_process)
             glopnet.update()
-
-            curses_lock.release()  # =============================================================== CURSES LOCK RELEASE
 
             if glopnet.should_close:
                 i_stop_lock.release()
@@ -216,7 +216,7 @@ class Glopnet:
                 break
 
             curses_lock.acquire()  # =============================================================== CURSES LOCK ACQUIRE
-            glopnet.render()
+            glopnet.draw()
             curses_lock.release()  # =============================================================== CURSES LOCK RELEASE
 
             sleep(SPF)
