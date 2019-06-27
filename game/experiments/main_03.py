@@ -35,7 +35,6 @@ class Glopnet:
         self.u_thread = None
 
         self.lookup = {
-            'resize': False,
         }
 
     def setup(self):
@@ -103,6 +102,7 @@ class Glopnet:
             self.scr_size = self.stdscr.getmaxyx()
             self.full_redraw = True
             curses.resize_term(*self.scr_size)
+            curses.curs_set(0)
 
     def run(self):
         try:
@@ -137,8 +137,6 @@ class Glopnet:
                 self.should_close = True
             elif ch == curses.KEY_MOUSE:
                 pass
-            elif ch == curses.KEY_RESIZE:
-                self.lookup['resize'] = True
 
     def update(self):
         pass
@@ -188,12 +186,6 @@ class Glopnet:
                 if inp is not None:
                     input_to_process.append(inp)
 
-            curses_lock.acquire()  # =============================================================== CURSES LOCK ACQUIRE
-            if glopnet.lookup['resize']:
-                glopnet.lookup['resize'] = False
-                glopnet.resize_screen()
-            curses_lock.release()  # =============================================================== CURSES LOCK RELEASE
-
             glopnet.process_input(input_to_process)
             glopnet.update()
 
@@ -237,11 +229,13 @@ class Glopnet:
                 ch = glopnet.stdscr.getch()
                 if ch == -1:
                     break
+                elif ch == curses.KEY_RESIZE:
+                    glopnet.resize_screen()
                 else:
                     input_queue.put(ch)
             curses_lock.release()  # =============================================================== CURSES LOCK RELEASE
 
-            sleep(SPF/4.0)
+            sleep(SPF/16.0)
 
 
 def safe_addstr(scr, y, x, string):
