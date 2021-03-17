@@ -1,5 +1,5 @@
-from deterministic_random import DRandom
-drandom_inst = DRandom(1234567345)
+import deterministic_random
+drandom_inst = deterministic_random.DRandom(1234567345)
 
 
 def drandom(i):

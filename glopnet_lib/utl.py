@@ -37,7 +37,7 @@ class _dir_enumerator(ConstEnumerator):
         elif dir == self.W:
             result = (-1, 0)
         else:
-            print "INVALID DIR: {}".format(dir)
+            print("INVALID DIR: {}".format(dir))
             result = (0, 0)
         return result
 
@@ -47,7 +47,7 @@ DIR = _dir_enumerator()
 
 def raw_input_gen(prompt=""):
     while True:
-        yield raw_input(prompt).lstrip().rstrip()
+        yield input(prompt).lstrip().rstrip()
 
 
 def will_it_float(input):

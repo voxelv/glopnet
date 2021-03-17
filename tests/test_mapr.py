@@ -13,9 +13,8 @@ PASS_STR = colored("PASS", 'green')
 FAIL_STR = colored("FAIL", 'red')
 
 
-
 def test_true(number, value):
-    print "{} {}".format(PASS_STR if value else FAIL_STR, number)
+    print("{} {}".format(PASS_STR if value else FAIL_STR, number))
 
 
 def test_false(number, value):
@@ -47,7 +46,7 @@ def test_generated_area():
         if 'items' in case['exp']:
             success = case['obj'].get_items() == case['exp']['items']
             if not success:
-                print "actual: {} not equal to expected: {}".format(case['obj'].get_items(), case['exp']['items'])
+                print("actual: {} not equal to expected: {}".format(case['obj'].get_items(), case['exp']['items']))
             # print "{} items: {}".format(i, PASS_STR if success else "FAIL")
             test_true("{:03}_{}_items".format(i, test_generated_area.__name__), success)
         # print case['obj']
@@ -73,10 +72,10 @@ def test_generated_area_line_probe_generator():
     reseed_drandom()
     Gai.default_char = NONE_CHAR
     ga = GeneratedArea(width=50, height=50)
-    for i in xrange(16):
+    for i in range(16):
         galpg = Galpg(Gai(char=ROAD_CHAR), Coord((i * 3) + 3, 0), direction=DIR.S)
         galpg.generate(ga)
-    for i in xrange(24):
+    for i in range(24):
         galpg2 = Galpg(Gai(char=ROAD_CHAR), Coord(0, (i * 2) + 1), direction=DIR.E)
         galpg2.generate(ga)
     # print ga.__str__().replace("\n", "\\n")
@@ -90,7 +89,7 @@ def test_generated_area_line_probe_generator_random():
     ga_h = 20
     ga = GeneratedArea(width=ga_w, height=ga_h)
     gens = []
-    for i in xrange(10):
+    for i in range(10):
         gens.append(Galpg(Gai(char=ROAD_CHAR), Coord(drandom(ga_w), drandom(ga_h)), direction=drandom(4)))
     for g in gens:
         g.generate(ga)
@@ -103,6 +102,7 @@ def run():
     test_generated_area_box_generator()
     test_generated_area_line_probe_generator()
     test_generated_area_line_probe_generator_random()
+
 
 if __name__ == '__main__':
     run()
