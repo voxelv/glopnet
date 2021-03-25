@@ -94,15 +94,8 @@ class Glopnet:
         # Set which mouse buttons are allowed (Rightclick and Leftclick)
         mm_info = curses.mousemask(
             0
-            | curses.BUTTON1_PRESSED
-            | curses.BUTTON1_RELEASED
-            | curses.BUTTON1_CLICKED
-            | curses.BUTTON2_PRESSED
-            | curses.BUTTON2_RELEASED
-            | curses.BUTTON2_CLICKED
-            | curses.BUTTON3_PRESSED
-            | curses.BUTTON3_RELEASED
-            | curses.BUTTON3_CLICKED
+            | curses.ALL_MOUSE_EVENTS
+            | curses.REPORT_MOUSE_POSITION
         )
         self.notify += str(mm_info)
         curses.curs_set(0)
@@ -160,6 +153,8 @@ class Glopnet:
                     self.notify += "w"
                 elif key.ch == ord(' '):
                     self.notify = ""
+                else:
+                    self.notify += key.s
 
             elif isinstance(inp, Mouse):
                 self.notify += " M " + inp.description() + " "
@@ -274,7 +269,17 @@ def input_thread(**kwargs):
             if ch == -1:
                 break
             elif ch == curses.KEY_MOUSE:
-                input_queue.put(Mouse(curses.getmouse()))
+                mouseinfo = (-1, -1, -1, -1, -1)
+                put_input = False
+                try:
+                    mouseinfo = curses.getmouse()
+                    put_input = True
+                except curses.error:
+                    input_queue.put(Key(ord('X'), mod=False, s=" MOUSEY "))
+                    pass
+
+                if put_input:
+                    input_queue.put(Mouse(mouseinfo))
             elif ch == curses.KEY_RESIZE:
                 glopnet.resize_screen()
             else:

@@ -1,5 +1,4 @@
 import curses
-import os
 from curses import wrapper
 from time import sleep
 
@@ -22,12 +21,8 @@ def main(stdscr):
 
     curses.mousemask(
         0
-        | curses.BUTTON1_PRESSED
-        | curses.BUTTON1_RELEASED
-        | curses.BUTTON1_CLICKED
-        | curses.BUTTON3_PRESSED
-        | curses.BUTTON3_RELEASED
-        | curses.BUTTON3_CLICKED
+        | curses.ALL_MOUSE_EVENTS
+        | curses.REPORT_MOUSE_POSITION
     )
 
     stdscr.nodelay(1)
@@ -65,7 +60,7 @@ def main(stdscr):
         title = "Curses example"[:width-1]
         subtitle = "Written by Clay McLeod"[:width-1]
         keystr = "Last key pressed: {}".format(k)[:width-1]
-        statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {}".format(cursor_x, cursor_y)
+        statusbarstr = "Press 'q' to exit | STATUS BAR | Pos: {}, {} | M: {}, {}".format(cursor_x, cursor_y, mouseinfo[2], mouseinfo[3])
         if k == 0:
             keystr = "No key press detected..."[:width-1]
         elif k == curses.KEY_MOUSE:
@@ -130,7 +125,7 @@ def main(stdscr):
         # Wait for next input
         k = stdscr.getch()
 
-        sleep(0.1)
+        sleep(1.0/60.0)
 
 
 def run():
@@ -138,5 +133,6 @@ def run():
 
 
 if __name__ == '__main__':
+    import os
     os.environ['TERM'] = "xterm-1003"
     run()
