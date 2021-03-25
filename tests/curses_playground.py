@@ -1,5 +1,7 @@
 import curses
+import os
 from curses import wrapper
+from time import sleep
 
 
 def main(stdscr):
@@ -72,7 +74,6 @@ def main(stdscr):
             except curses.error:
                 pass
 
-
         # Centering calculations
         start_x_title = int((width // 2) - (len(title) // 2) - len(title) % 2)
         start_x_subtitle = int((width // 2) - (len(subtitle) // 2) - len(subtitle) % 2)
@@ -129,10 +130,13 @@ def main(stdscr):
         # Wait for next input
         k = stdscr.getch()
 
+        sleep(0.1)
+
 
 def run():
     wrapper(main)
 
 
 if __name__ == '__main__':
+    os.environ['TERM'] = "xterm-1003"
     run()

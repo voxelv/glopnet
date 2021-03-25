@@ -1,5 +1,5 @@
 import curses
-from Queue import Queue, Empty as QueueEmptyError
+from queue import Queue, Empty as QueueEmptyError
 from threading import Thread, RLock
 
 from time import sleep
@@ -20,22 +20,22 @@ WHITE_ON_RED = 1
 WHITE_ON_BLUE = 2
 BLACK_ON_WHITE = 3
 BLACK_ON_BLUE = 4
+WHITE_ON_BLACK = 5
 
 
 class Key:
     def __init__(self, ch, mod=False, s=""):
-        self._ch = ch
-        self._mod = mod
-        self._s = s
+        self.ch = ch
+        self.mod = mod
+        self.s = s
 
-    def mod(self):
-        return self._mod
 
-    def ch(self):
-        return self._ch
+class Mouse:
+    def __init__(self, info=None):
+        self._info = info
 
-    def s(self):
-        return self._s
+    def description(self):
+        return "MOUSE" if self._info is None else str(self._info)
 
 
 class Glopnet:
@@ -43,16 +43,13 @@ class Glopnet:
         self.stdscr = None
         self.scr_size = (0, 0)
         self.full_redraw = True
+        self.notify = ""
 
         self.should_close = False
 
         self.i_thread = None
         self.d_thread = None
         self.u_thread = None
-
-        self.lookup = {
-            'key': Key(-1, mod=False)
-        }
 
     def setup(self):
 
@@ -92,22 +89,27 @@ class Glopnet:
         curses.init_pair(WHITE_ON_BLUE, curses.COLOR_WHITE, curses.COLOR_BLUE)
         curses.init_pair(BLACK_ON_WHITE, curses.COLOR_BLACK, curses.COLOR_WHITE)
         curses.init_pair(BLACK_ON_BLUE, curses.COLOR_BLACK, curses.COLOR_BLUE)
+        curses.init_pair(WHITE_ON_BLACK, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
         # Set which mouse buttons are allowed (Rightclick and Leftclick)
-        curses.mousemask(
+        mm_info = curses.mousemask(
             0
             | curses.BUTTON1_PRESSED
             | curses.BUTTON1_RELEASED
             | curses.BUTTON1_CLICKED
+            | curses.BUTTON2_PRESSED
+            | curses.BUTTON2_RELEASED
+            | curses.BUTTON2_CLICKED
             | curses.BUTTON3_PRESSED
             | curses.BUTTON3_RELEASED
             | curses.BUTTON3_CLICKED
         )
+        self.notify += str(mm_info)
         curses.curs_set(0)
 
         # Don't wait for getch()
-        self.stdscr.nodelay(1)
-        self.stdscr.leaveok(1)
+        self.stdscr.nodelay(True)
+        self.stdscr.leaveok(True)
 
         # Clear and refresh the screen for a blank canvas
         self.stdscr.clear()
@@ -127,7 +129,7 @@ class Glopnet:
             self.stdscr = curses.initscr()
             curses.noecho()
             curses.cbreak()
-            self.stdscr.keypad(1)
+            self.stdscr.keypad(True)
 
             # Do setup
             self.setup()
@@ -140,25 +142,27 @@ class Glopnet:
         finally:
             # Set everything back to normal
             if self.stdscr is not None:
-                self.stdscr.keypad(0)
+                self.stdscr.keypad(False)
                 curses.echo()
                 curses.nocbreak()
                 curses.endwin()
 
     def process_input(self, input_list):
-        for key in input_list:
-            self.full_redraw = True
-            assert isinstance(key, Key)
-            if key.ch() == -1:
-                return
+        for inp in input_list:
+            if isinstance(inp, Key):
+                key = inp
+                self.full_redraw = True
+                if key.ch == -1:
+                    continue
+                elif key.ch == ord('q'):
+                    self.should_close = True
+                elif key.ch == ord('w'):
+                    self.notify += "w"
+                elif key.ch == ord(' '):
+                    self.notify = ""
 
-            elif key.ch() == ord('q'):
-                self.should_close = True
-            elif key.ch() == curses.KEY_MOUSE:
-                self.lookup['key']._s += " MOUSE!"
-                pass
-            else:
-                self.lookup['key'] = key
+            elif isinstance(inp, Mouse):
+                self.notify += " M " + inp.description() + " "
 
     def update(self):
         pass
@@ -171,7 +175,7 @@ class Glopnet:
             h, w = self.scr_size
 
             # Draw frame
-            self.stdscr.attron(curses.color_pair(BLACK_ON_WHITE))
+            self.stdscr.attron(curses.color_pair(WHITE_ON_BLUE))
             # first line
             self.stdscr.hline(0, 1, " ", w - 2)
             # edges
@@ -179,14 +183,11 @@ class Glopnet:
             self.stdscr.vline(1, w - 1, " ", h - 2)
             # last line
             self.stdscr.hline(h - 1, 1, " ", w - 2)
-            self.stdscr.attroff(curses.color_pair(BLACK_ON_WHITE))
-            # safe_addstr(self.stdscr, 1, 1, str(chr(self.lookup['key']) + " : " + str(self.lookup['key']) if self.lookup['key'] >= 0 else "UNKNOWN"))
-            key = self.lookup['key']
-            s = key.s()
-            dstr = "".join([(x if ord(' ') <= ord(x) <= ord('~') else "?") for x in s])
-            safe_addstr(self.stdscr, 1, 1, str(dstr))
-            dstr2 = "{:0= 17b}".format(int(key.ch()))
-            safe_addstr(self.stdscr, 2, 1, str(dstr2))
+            self.stdscr.attroff(curses.color_pair(WHITE_ON_BLUE))
+
+            self.stdscr.attron(curses.color_pair(WHITE_ON_BLACK))
+            safe_addstr(self.stdscr, 2, 1, self.notify)
+            self.stdscr.attroff(curses.color_pair(WHITE_ON_BLACK))
 
 
 def update_thread(**kwargs):
@@ -272,17 +273,12 @@ def input_thread(**kwargs):
             ch = glopnet.stdscr.getch()
             if ch == -1:
                 break
-            elif ch == 27:
-                ch = glopnet.stdscr.getch()
-                if ch == -1:
-                    break
-                else:
-                    s = curses.keyname(ch)
-                    input_queue.put(Key(ch, mod=True, s=s))
+            elif ch == curses.KEY_MOUSE:
+                input_queue.put(Mouse(curses.getmouse()))
             elif ch == curses.KEY_RESIZE:
                 glopnet.resize_screen()
             else:
-                s = curses.keyname(ch)
+                s = str(curses.keyname(ch))
                 input_queue.put(Key(ch, mod=False, s=s))
         curses_lock.release()  # =============================================================== CURSES LOCK RELEASE
 

@@ -1,4 +1,4 @@
-import deterministic_random
+from glopnet_lib.deterministic_random import DRandom
 drandom_inst = deterministic_random.DRandom(1234567345)
 
 

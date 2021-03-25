@@ -15,7 +15,7 @@ def get_gamestate(k):
     if c.GAMESTATE in k and k[c.GAMESTATE] and type(k[c.GAMESTATE]) is GlopnetGamestate and k[c.GAMESTATE].is_valid():
         result = k[c.GAMESTATE]
     else:
-        print "Invalid gamestate!"
+        print("Invalid gamestate!")
         result = None
     return result
 
@@ -26,13 +26,13 @@ def get_loc(gamestate):
 
 def cmd_map(cmd="map", *args, **kwargs):
     gamestate = get_gamestate(kwargs)
-    print gamestate.map
+    print(gamestate.map)
 
 
 def cmd_look(cmd="look", *args, **kwargs):
     def local_print(f):
         if not kwargs.get('no_print', False):
-            print f
+            print(f)
 
     gamestate = get_gamestate(kwargs)
     if len(args) == 0:
@@ -88,11 +88,11 @@ def cmd_look(cmd="look", *args, **kwargs):
 
 def cmd_move(cmd="move", *args, **kwargs):
     if len(args) == 0:
-        print "You dance a jig."
+        print("You dance a jig.")
         return
 
     if not len(args) in [1, 2]:
-        print "Incorrect number of arguments for command: {}.".format(cmd)
+        print("Incorrect number of arguments for command: {}.".format(cmd))
         return
 
     # Get the arguments
@@ -104,7 +104,7 @@ def cmd_move(cmd="move", *args, **kwargs):
         distance = args[1]
 
     if not will_it_int(distance) and not will_it_int(direction):
-        print "Unable to understand input."
+        print("Unable to understand input.")
         return
     elif will_it_int(distance) and not will_it_int(direction):
         distance = int(distance)
@@ -113,11 +113,11 @@ def cmd_move(cmd="move", *args, **kwargs):
         distance = int(direction)
         direction = tmp
     else:
-        print "Unable to understand input."
+        print("Unable to understand input.")
         return
 
     if direction not in c.DIRECTIONS_AROUND:
-        print "Incorrect direction. Choose from {}.".format(" ".join(c.DIRECTIONS_AROUND))
+        print("Incorrect direction. Choose from {}.".format(" ".join(c.DIRECTIONS_AROUND)))
         return
 
     gamestate = get_gamestate(kwargs)
@@ -137,13 +137,13 @@ def cmd_move(cmd="move", *args, **kwargs):
         moved += 1
 
     if moved != distance:
-        print "That way is out of bounds."
-    print "You move {} {} time{}.".format(c.DIR_DESCRIPTION[direction], moved, "" if moved == 1 else "s")
+        print("That way is out of bounds.")
+    print("You move {} {} time{}.".format(c.DIR_DESCRIPTION[direction], moved, "" if moved == 1 else "s"))
 
 
 def cmd_math(cmd="math", *args, **kwargs):
     if not len(args) >= 2:
-        print 'Invalid number of arguments ({}) for command: "{}". Expected at least 2.'.format(len(args), cmd)
+        print('Invalid number of arguments ({}) for command: "{}". Expected at least 2.'.format(len(args), cmd))
     else:
         floatable = True
         for arg in args:
@@ -165,22 +165,22 @@ def cmd_math(cmd="math", *args, **kwargs):
                     assert cmd == 'div'
                     result /= x
 
-            print "The result is: {}".format(result)
+            print("The result is: {}".format(result))
         else:
-            print 'Invalid arguments ({}) for command: "{}". Expected numbers.'.format(" ".join(args), cmd)
+            print('Invalid arguments ({}) for command: "{}". Expected numbers.'.format(" ".join(args), cmd))
 
 
 def cmd_help(cmd="help", *args, **kwargs):
     desc_str = ['Available commands ("q" to quit):']
     for cmd in help_cmd_order:
         desc_str.append("    " + "\n    ".join(cmds[cmd].get('desc', [cmd])))
-    print "\n".join(desc_str)
+    print("\n".join(desc_str))
 
 
 def cmd_debug(cmd="debug", *args, **kwargs):
     debugs = ['area']
     if len(args) == 0:
-        print "Available debugs: {}".format(debugs)
+        print("Available debugs: {}".format(debugs))
 
     if 'area' in args:
         gamestate = get_gamestate(kwargs)
