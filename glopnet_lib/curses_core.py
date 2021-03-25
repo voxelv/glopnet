@@ -36,13 +36,37 @@ class Key:
 
 class Mouse:
     def __init__(self, info=None):
-        self._info = info
+        if isinstance(info, tuple) and len(info) == 5:
+            self.id = info[0]
+            self.x = info[1]
+            self.y = info[2]
+            self.z = info[3]
+            self.bstate = info[4]
 
-    def description(self):
-        return "" if self._info is None else str(self._info)
+    def get_pos(self):
+        return self.y, self.x
 
-    def __repr__(self):
-        return f"M: {self.description()}"
+
+class Pulse:
+    y = -1
+    x = -1
+    frame = 0
+    done = False
+
+    def __init__(self, y, x):
+        self.y = y
+        self.x = x
+
+    def draw(self, scr):
+        n = int(int(self.frame) / 5) + 1
+        for y, x in [(-n, 0), (0, -n), (n, 0), (0, n)]:
+            safe_addstr(scr, self.y + y, self.x + x, "*")
+
+        if n >= 4:
+            self.done = True
+
+        self.frame += 1
+        return self.done
 
 
 class Glopnet:
@@ -51,6 +75,11 @@ class Glopnet:
         self.scr_size = (0, 0)
         self.full_redraw = True
         self.notify = ""
+        self.status = ""
+        self.mouse_pos = (-1, -1)
+
+        self.drawables = []
+        self.one_more_frame = False
 
         self.should_close = False
 
@@ -101,10 +130,9 @@ class Glopnet:
         # Set which mouse buttons are allowed (Rightclick and Leftclick)
         mm_info = curses.mousemask(
             0
-            | curses.ALL_MOUSE_EVENTS
+            | curses.BUTTON1_CLICKED
             | curses.REPORT_MOUSE_POSITION
         )
-        self.notify += str(mm_info)
         curses.curs_set(0)
 
         # Don't wait for getch()
@@ -151,6 +179,7 @@ class Glopnet:
         if len(input_list) > 0:
             self.full_redraw = True
             self.notify += str(input_list)
+        mouse_bstates = []
         for inp in input_list:
             if isinstance(inp, Key):
                 key = inp
@@ -166,18 +195,23 @@ class Glopnet:
                     self.notify += key.s
 
             elif isinstance(inp, Mouse):
-                self.notify += " M " + inp.description() + " "
-            else:
-                self.notify += " ? "
+                self.mouse_pos = inp.get_pos()
+                if inp.bstate & curses.BUTTON1_CLICKED:
+                    self.drawables.append(Pulse(self.mouse_pos[0], self.mouse_pos[1]))
+                mouse_bstates.append(str(inp.bstate))
+        self.status = " ".join(mouse_bstates)
 
     def update(self):
         pass
 
     def draw(self):
-        if self.full_redraw:
+        if len(self.drawables) > 0:
+            self.full_redraw = True
+        if self.full_redraw or self.one_more_frame:
             self.full_redraw = False
+            self.one_more_frame = False
             self.stdscr.clear()
-            self.scr_size = self.stdscr.getmaxyx()
+            self.scr_size = (self.stdscr.getmaxyx()[0], self.stdscr.getmaxyx()[1])
             h, w = self.scr_size
 
             # Draw frame
@@ -191,9 +225,26 @@ class Glopnet:
             self.stdscr.hline(h - 1, 1, " ", w - 2)
             self.stdscr.attroff(curses.color_pair(WHITE_ON_BLUE))
 
-            self.stdscr.attron(curses.color_pair(WHITE_ON_BLACK))
-            safe_addstr(self.stdscr, 2, 1, self.notify)
-            self.stdscr.attroff(curses.color_pair(WHITE_ON_BLACK))
+            self.stdscr.attron(curses.color_pair(WHITE_ON_RED))
+            safe_addstr(self.stdscr, self.mouse_pos[0], self.mouse_pos[1], "!")
+            self.stdscr.attroff(curses.color_pair(WHITE_ON_RED))
+
+            self.stdscr.attron(curses.color_pair(WHITE_ON_BLUE))
+            safe_addstr(self.stdscr, h - 1, 0, self.status)
+            self.stdscr.attroff(curses.color_pair(WHITE_ON_BLUE))
+
+            removals = []
+            for drawable in self.drawables:
+                removals.append(drawable.draw(self.stdscr))
+
+            did_remove = False
+            for x in range(len(removals)):
+                i = len(removals) - 1 - x
+                if removals[i]:
+                    self.drawables.pop(i)
+                    did_remove = True
+            if len(self.drawables) == 0 and did_remove:
+                self.one_more_frame = True
 
 
 def update_thread(**kwargs):
@@ -293,10 +344,16 @@ def input_thread(**kwargs):
                 input_queue.put(Key(ch, mod=False, s=s))
         curses_lock.release()  # =============================================================== CURSES LOCK RELEASE
 
-        sleep(SPF/16.0)
+        sleep(SPF / 16.0)
 
 
 def safe_addstr(scr, y, x, string):
+    if y < 0:
+        return
+    if x < 0:
+        return
+    if y >= scr.getmaxyx()[0]:
+        return
     if x + len(string) >= scr.getmaxyx()[1]:
         try:
             scr.addstr(y, x, string)
