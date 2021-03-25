@@ -1,4 +1,5 @@
 import curses
+import os
 from queue import Queue, Empty as QueueEmptyError
 from threading import Thread, RLock
 
@@ -29,13 +30,19 @@ class Key:
         self.mod = mod
         self.s = s
 
+    def __repr__(self):
+        return f"K: {self.ch}, {self.s}"
+
 
 class Mouse:
     def __init__(self, info=None):
         self._info = info
 
     def description(self):
-        return "MOUSE" if self._info is None else str(self._info)
+        return "" if self._info is None else str(self._info)
+
+    def __repr__(self):
+        return f"M: {self.description()}"
 
 
 class Glopnet:
@@ -141,10 +148,12 @@ class Glopnet:
                 curses.endwin()
 
     def process_input(self, input_list):
+        if len(input_list) > 0:
+            self.full_redraw = True
+            self.notify += str(input_list)
         for inp in input_list:
             if isinstance(inp, Key):
                 key = inp
-                self.full_redraw = True
                 if key.ch == -1:
                     continue
                 elif key.ch == ord('q'):
@@ -158,6 +167,8 @@ class Glopnet:
 
             elif isinstance(inp, Mouse):
                 self.notify += " M " + inp.description() + " "
+            else:
+                self.notify += " ? "
 
     def update(self):
         pass
@@ -270,16 +281,11 @@ def input_thread(**kwargs):
                 break
             elif ch == curses.KEY_MOUSE:
                 mouseinfo = (-1, -1, -1, -1, -1)
-                put_input = False
                 try:
                     mouseinfo = curses.getmouse()
-                    put_input = True
                 except curses.error:
-                    input_queue.put(Key(ord('X'), mod=False, s=" MOUSEY "))
                     pass
-
-                if put_input:
-                    input_queue.put(Mouse(mouseinfo))
+                input_queue.put(Mouse(info=mouseinfo))
             elif ch == curses.KEY_RESIZE:
                 glopnet.resize_screen()
             else:
@@ -301,4 +307,5 @@ def safe_addstr(scr, y, x, string):
 
 
 def run_experiment():
+    os.environ['TERM'] = "xterm-1003"
     run()

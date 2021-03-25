@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import sys
-from game import main_02 as main
+from game import main as main
 
 if __name__ == '__main__':
     if len(sys.argv) <= 1:
